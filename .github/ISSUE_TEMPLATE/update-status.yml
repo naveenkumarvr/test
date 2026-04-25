@@ -3,25 +3,25 @@ description: Edit the values below to update the AMPM status page.
 title: "Status update"
 labels: ["status-update"]
 body:
-#   - type: markdown
-#     attributes:
-#       value: |
-#         ### 📊 Current status
+  - type: markdown
+    attributes:
+      value: |
+        ### 📊 Current status
 
-#         | Environment | Status | Scheduled Downtime | Remarks |
-#         | --- | --- | --- | --- |
-#         | `ampm-dev-us` | 🟢 Up | — | — |
-#         | `ampm-qa-us` | 🟢 Up | — | — |
-#         | `ampm-vnv-us` | 🟠 Not Stable | — | — |
-#         | `ampm-perf-us` | 🔴 Down | ✅ Yes | — |
+        | Environment | Status | Scheduled Downtime | Remarks |
+        | --- | --- | --- | --- |
+        | `ampm-dev-us` | 🟢 Up | — | — |
+        | `ampm-qa-us` | 🟢 Up | — | — |
+        | `ampm-vnv-us` | 🟠 Not Stable | — | — |
+        | `ampm-perf-us` | 🔴 Down | ✅ Yes | — |
 
-#         _Snapshot: 2026-04-25T00:00:00Z_
+        _Snapshot: 2026-04-25T00:00:00Z_
 
-#         ---
+        ---
 
-#         **Values below are pre-filled with the current state.** Change whatever you need
-#         and click **Submit new issue**. A workflow will update `data.json` and this page,
-#         then close the issue.
+        **Values below are pre-filled with the current state.** Change whatever you need
+        and click **Submit new issue**. A workflow will update `data.json` and this page,
+        then close the issue.
 
   # ── ampm-dev-us ──
   - type: dropdown
