@@ -29,8 +29,8 @@ body:
     attributes:
       label: ampm-dev-us — Scheduled downtime
       options:
-        - No
-        - Yes
+        - "No"
+        - "Yes"
       default: 0
     validations:
       required: true
@@ -40,7 +40,6 @@ body:
     attributes:
       label: ampm-dev-us — Remarks
       placeholder: optional note
-      value: ""
 
   # ── ampm-qa-us ──
   - type: dropdown
@@ -60,8 +59,8 @@ body:
     attributes:
       label: ampm-qa-us — Scheduled downtime
       options:
-        - No
-        - Yes
+        - "No"
+        - "Yes"
       default: 0
     validations:
       required: true
@@ -71,7 +70,6 @@ body:
     attributes:
       label: ampm-qa-us — Remarks
       placeholder: optional note
-      value: ""
 
   # ── ampm-vnv-us ──
   - type: dropdown
@@ -91,8 +89,8 @@ body:
     attributes:
       label: ampm-vnv-us — Scheduled downtime
       options:
-        - No
-        - Yes
+        - "No"
+        - "Yes"
       default: 0
     validations:
       required: true
@@ -102,7 +100,6 @@ body:
     attributes:
       label: ampm-vnv-us — Remarks
       placeholder: optional note
-      value: ""
 
   # ── ampm-perf-us ──
   - type: dropdown
@@ -122,8 +119,8 @@ body:
     attributes:
       label: ampm-perf-us — Scheduled downtime
       options:
-        - No
-        - Yes
+        - "No"
+        - "Yes"
       default: 1
     validations:
       required: true
@@ -133,4 +130,3 @@ body:
     attributes:
       label: ampm-perf-us — Remarks
       placeholder: optional note
-      value: ""

@@ -13,7 +13,8 @@ import argparse, json, re, datetime, pathlib, sys
 
 ENV_ORDER = ["ampm-dev-us", "ampm-qa-us", "ampm-vnv-us", "ampm-perf-us"]
 STATUS_OPTIONS = ["up", "warn", "down"]
-DOWNTIME_OPTIONS = ["No", "Yes"]
+DOWNTIME_OPTIONS = ["\"No\"", "\"Yes\""]
+DOWNTIME_LABELS = ["No", "Yes"]
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 DATA_FILE = ROOT / "data.json"
@@ -92,8 +93,9 @@ def render_template(data: dict) -> str:
             "    attributes:",
             f"      label: {env} — Remarks",
             "      placeholder: optional note",
-            f"      value: {yaml_escape(remarks)}",
         ]
+        if remarks:
+            lines.append(f"      value: {yaml_escape(remarks)}")
 
     return "\n".join(lines) + "\n"
 
