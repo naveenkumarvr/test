@@ -44,6 +44,16 @@ def render_template(data: dict) -> str:
     envs = data.get("envs", {})
     updated = data.get("updated", "")
 
+    status_emoji = {"up": "🟢 Up", "warn": "🟠 Not Stable", "down": "🔴 Down"}
+
+    table_rows = []
+    for env in ENV_ORDER:
+        e = {**default_env(), **envs.get(env, {})}
+        status_cell = status_emoji.get(e["status"], e["status"])
+        downtime_cell = "✅ Yes" if e["downtime"] else "—"
+        remarks_cell = e["remarks"].replace("|", "\\|") if e["remarks"] else "—"
+        table_rows.append(f"        | `{env}` | {status_cell} | {downtime_cell} | {remarks_cell} |")
+
     lines = [
         "name: Update environment status",
         "description: Edit the values below to update the AMPM status page.",
@@ -53,10 +63,19 @@ def render_template(data: dict) -> str:
         "  - type: markdown",
         "    attributes:",
         "      value: |",
-        f"        **Current values are pre-filled** (snapshot: {updated or 'n/a'}).",
+        "        ### 📊 Current status",
         "",
-        "        Change anything you need and click **Submit new issue**.",
-        "        A workflow will update `data.json` and the status page, then close this issue.",
+        "        | Environment | Status | Scheduled Downtime | Remarks |",
+        "        | --- | --- | --- | --- |",
+        *table_rows,
+        "",
+        f"        _Snapshot: {updated or 'n/a'}_",
+        "",
+        "        ---",
+        "",
+        "        **Values below are pre-filled with the current state.** Change whatever you need",
+        "        and click **Submit new issue**. A workflow will update `data.json` and this page,",
+        "        then close the issue.",
     ]
 
     for env in ENV_ORDER:

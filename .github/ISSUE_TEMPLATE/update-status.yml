@@ -6,10 +6,22 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Current values are pre-filled** (snapshot: 2026-04-25T00:00:00Z).
+        ### 📊 Current status
 
-        Change anything you need and click **Submit new issue**.
-        A workflow will update `data.json` and the status page, then close this issue.
+        | Environment | Status | Scheduled Downtime | Remarks |
+        | --- | --- | --- | --- |
+        | `ampm-dev-us` | 🟢 Up | — | — |
+        | `ampm-qa-us` | 🟢 Up | — | — |
+        | `ampm-vnv-us` | 🟠 Not Stable | — | — |
+        | `ampm-perf-us` | 🔴 Down | ✅ Yes | — |
+
+        _Snapshot: 2026-04-25T00:00:00Z_
+
+        ---
+
+        **Values below are pre-filled with the current state.** Change whatever you need
+        and click **Submit new issue**. A workflow will update `data.json` and this page,
+        then close the issue.
 
   # ── ampm-dev-us ──
   - type: dropdown
