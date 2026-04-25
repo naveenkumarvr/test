@@ -2,7 +2,7 @@ name: Update environment status
 description: Edit the values below to update the AMPM status page.
 title: "Status update"
 labels: ["status-update"]
-# body:
+body:
 #   - type: markdown
 #     attributes:
 #       value: |
