@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AMPM Environment Status</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0; padding: 2rem;
+      background: #f6f8fa; color: #24292f;
+    }
+    .container {
+      max-width: 1000px; margin: 0 auto;
+      background: #fff; border: 1px solid #d0d7de; border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden;
+    }
+    header {
+      padding: 1.25rem 1.5rem; border-bottom: 1px solid #d0d7de;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    header h1 { margin: 0; font-size: 1.4rem; }
+    header .meta { font-size: 0.85rem; color: #57606a; }
+    .actions { display: flex; gap: 0.5rem; }
+    .btn {
+      background: #2da44e; color: #fff;
+      border: 1px solid rgba(27,31,36,0.15);
+      padding: 0.45rem 0.9rem; border-radius: 6px;
+      cursor: pointer; font-size: 0.85rem;
+      text-decoration: none; display: inline-block;
+    }
+    .btn:hover { background: #2c974b; }
+    .btn.secondary { background: #f6f8fa; color: #24292f; }
+    .btn.secondary:hover { background: #eaeef2; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 0.85rem 1rem; text-align: left;
+      border-bottom: 1px solid #eaeef2; vertical-align: middle;
+    }
+    th {
+      background: #f6f8fa; font-size: 0.85rem;
+      text-transform: uppercase; letter-spacing: 0.03em; color: #57606a;
+    }
+    tr:last-child td { border-bottom: none; }
+    .status {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-weight: 600; font-size: 0.9rem;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .status-up   { color: #1a7f37; }
+    .status-up   .dot { background: #2da44e; box-shadow: 0 0 0 3px rgba(45,164,78,0.15); }
+    .status-warn { color: #9a6700; }
+    .status-warn .dot { background: #e8a317; box-shadow: 0 0 0 3px rgba(232,163,23,0.15); }
+    .status-down { color: #b42318; }
+    .status-down .dot { background: #d1242f; box-shadow: 0 0 0 3px rgba(209,36,47,0.15); }
+    .checkbox-cell { text-align: center; }
+    .pill {
+      display: inline-block; padding: 0.15rem 0.55rem;
+      border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+      background: #fff8c5; color: #9a6700;
+    }
+    .muted { color: #8c959f; font-style: italic; }
+    footer {
+      padding: 0.75rem 1.5rem; background: #f6f8fa;
+      border-top: 1px solid #d0d7de;
+      font-size: 0.8rem; color: #57606a;
+    }
+    .err {
+      padding: 1rem 1.5rem; color: #b42318;
+      background: #ffebe9; border-bottom: 1px solid #ffcecb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>AMPM Environment Status</h1>
+        <div class="meta">Last updated: <span id="last-updated">—</span></div>
+      </div>
+      <div class="actions">
+        <a id="edit-link" class="btn" target="_blank" rel="noopener">✏️ Edit on GitHub</a>
+        <button id="refresh-btn" class="btn secondary" title="Refresh">↻ Refresh</button>
+      </div>
+    </header>
+
+    <div id="error" class="err" style="display:none"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Environment</th>
+          <th>Status</th>
+          <th class="checkbox-cell">Scheduled Downtime</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody id="status-tbody"></tbody>
+    </table>
+
+    <footer>
+      Source of truth: <code>data.json</code>. Edits happen by editing the
+      pinned <strong>Status Dashboard</strong> issue on GitHub — changes appear here within ~30–60 seconds.
+    </footer>
+  </div>
+
+  <script>
+    // ── Configure for your repo ─────────────────────────────────────────
+    const GH_OWNER = "OWNER";
+    const GH_REPO  = "REPO";
+    // ────────────────────────────────────────────────────────────────────
+
+    const STATUS_META = {
+      up:   { label: "Up",         cls: "status-up"   },
+      warn: { label: "Not Stable", cls: "status-warn" },
+      down: { label: "Down",       cls: "status-down" },
+    };
+    const ENV_ORDER = ["ampm-dev-us", "ampm-qa-us", "ampm-vnv-us", "ampm-perf-us"];
+
+    function showError(msg) {
+      const el = document.getElementById("error");
+      el.textContent = msg;
+      el.style.display = "block";
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function renderRows(data) {
+      const tbody = document.getElementById("status-tbody");
+      tbody.innerHTML = "";
+      ENV_ORDER.forEach(env => {
+        const e = (data.envs && data.envs[env]) || { status: "up", downtime: false, remarks: "" };
+        const meta = STATUS_META[e.status] || STATUS_META.up;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${env}</strong></td>
+          <td><span class="status ${meta.cls}"><span class="dot"></span>${meta.label}</span></td>
+          <td class="checkbox-cell">
+            ${e.downtime
+              ? '<span class="pill">Scheduled</span>'
+              : '<input type="checkbox" disabled />'}
+          </td>
+          <td>${e.remarks ? escapeHtml(e.remarks) : '<span class="muted">—</span>'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById("last-updated").textContent =
+        data.updated ? new Date(data.updated).toLocaleString() : "—";
+    }
+
+    async function load() {
+      try {
+        const res = await fetch(`data.json?ts=${Date.now()}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        document.getElementById("error").style.display = "none";
+        renderRows(data);
+      } catch (e) {
+        showError(`Failed to load data.json: ${e.message}`);
+      }
+    }
+
+    document.getElementById("edit-link").href =
+      `https://github.com/${GH_OWNER}/${GH_REPO}/issues?q=is%3Aissue+label%3Astatus-dashboard`;
+    document.getElementById("refresh-btn").addEventListener("click", load);
+    load();
+  </script>
+</body>
+</html>

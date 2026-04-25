@@ -1,0 +1,9 @@
+{
+  "updated": "2026-04-25T00:00:00Z",
+  "envs": {
+    "ampm-dev-us":  { "status": "up",   "downtime": false, "remarks": "" },
+    "ampm-qa-us":   { "status": "up",   "downtime": false, "remarks": "" },
+    "ampm-vnv-us":  { "status": "warn", "downtime": false, "remarks": "" },
+    "ampm-perf-us": { "status": "down", "downtime": true,  "remarks": "" }
+  }
+}

@@ -1,0 +1,39 @@
+name: Rebuild dashboard issue
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data.json'
+      - '.github/scripts/sync.py'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  rebuild:
+    if: ${{ !contains(github.event.head_commit.message, '[skip-issue-rebuild]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render issue body from data.json
+        run: python .github/scripts/sync.py to-issue --out issue-body.md
+
+      - name: Update dashboard issue body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh issue list --label status-dashboard --state all --json number --jq '.[0].number')
+          if [ -z "$existing" ]; then
+            echo "No dashboard issue found. Run 'Init status dashboard issue' workflow first."
+            exit 0
+          fi
+          # Only edit if body actually differs to avoid feedback loops.
+          gh issue view "$existing" --json body --jq '.body' > current-body.md
+          if cmp -s current-body.md issue-body.md; then
+            echo "Issue body already up to date."
+          else
+            gh issue edit "$existing" --body-file issue-body.md
+          fi

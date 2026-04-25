@@ -1,0 +1,38 @@
+name: Sync status from issue
+
+on:
+  issues:
+    types: [edited]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync:
+    if: contains(toJSON(github.event.issue.labels.*.name), 'status-dashboard')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Write issue body to file
+        env:
+          BODY: ${{ github.event.issue.body }}
+        run: printf '%s' "$BODY" > issue-body.md
+
+      - name: Update data.json from issue
+        id: sync
+        run: |
+          result=$(python .github/scripts/sync.py to-json issue-body.md)
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+
+      - name: Commit changes
+        if: steps.sync.outputs.result == 'changed'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git commit -m "chore: sync status from issue #${{ github.event.issue.number }} [skip-issue-rebuild]"
+          git push
