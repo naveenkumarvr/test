@@ -1,0 +1,56 @@
+name: Apply status form submission
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  apply:
+    if: contains(toJSON(github.event.issue.labels.*.name), 'status-update')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Write issue body to file
+        env:
+          BODY: ${{ github.event.issue.body }}
+        run: printf '%s' "$BODY" > issue-body.md
+
+      - name: Apply form to data.json
+        id: apply
+        run: |
+          result=$(python .github/scripts/sync.py apply-form issue-body.md)
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+
+      - name: Commit changes
+        if: steps.apply.outputs.result == 'changed'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git commit -m "chore: apply status update from issue #${{ github.event.issue.number }}"
+          git push
+
+      - name: Comment + close issue (changed)
+        if: steps.apply.outputs.result == 'changed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "✅ Status page updated. It will reflect within ~30–60 seconds."
+          gh issue close ${{ github.event.issue.number }}
+
+      - name: Comment + close issue (no-op)
+        if: steps.apply.outputs.result == 'no-change'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "ℹ️ No changes detected — submitted values match current state."
+          gh issue close ${{ github.event.issue.number }}

@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
-"""Sync helpers between the dashboard issue body and data.json."""
+"""
+Sync helpers for the AMPM status page.
+
+Two responsibilities:
+  1. regen-template : Regenerate .github/ISSUE_TEMPLATE/update-status.yml
+                      so dropdowns/inputs default to current data.json values.
+  2. apply-form     : Parse a submitted issue body (from the form) and update
+                      data.json.
+"""
 from __future__ import annotations
-import argparse, json, re, sys, datetime, pathlib
+import argparse, json, re, datetime, pathlib, sys
 
 ENV_ORDER = ["ampm-dev-us", "ampm-qa-us", "ampm-vnv-us", "ampm-perf-us"]
-VALID_STATUSES = ("up", "warn", "down")
-MARKER = "<!-- AMPM-STATUS-DASHBOARD: do not remove this marker -->"
-DATA_FILE = pathlib.Path("data.json")
+STATUS_OPTIONS = ["up", "warn", "down"]
+DOWNTIME_OPTIONS = ["No", "Yes"]
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+DATA_FILE = ROOT / "data.json"
+TEMPLATE_FILE = ROOT / ".github" / "ISSUE_TEMPLATE" / "update-status.yml"
 
 
 def default_env() -> dict:
@@ -19,63 +30,131 @@ def load_data() -> dict:
     return {"updated": "", "envs": {e: default_env() for e in ENV_ORDER}}
 
 
-def render_body(data: dict) -> str:
-    lines = [
-        MARKER,
-        "",
-        f"_Last updated: {data.get('updated', '')}_",
-        "",
-        "Edit values below and **Update comment** (or just toggle a checkbox) to apply changes to the status page.",
-        "",
-        "Allowed status values: `up`, `warn`, `down`.",
-        "",
-    ]
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Regenerate the issue form template
+# ─────────────────────────────────────────────────────────────────────────────
+
+def yaml_escape(s: str) -> str:
+    """Quote a string for safe inclusion in a YAML double-quoted scalar."""
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def render_template(data: dict) -> str:
     envs = data.get("envs", {})
+    updated = data.get("updated", "")
+
+    lines = [
+        "name: Update environment status",
+        "description: Edit the values below to update the AMPM status page.",
+        'title: "Status update"',
+        "labels: [\"status-update\"]",
+        "body:",
+        "  - type: markdown",
+        "    attributes:",
+        "      value: |",
+        f"        **Current values are pre-filled** (snapshot: {updated or 'n/a'}).",
+        "",
+        "        Change anything you need and click **Submit new issue**.",
+        "        A workflow will update `data.json` and the status page, then close this issue.",
+    ]
+
     for env in ENV_ORDER:
         e = {**default_env(), **envs.get(env, {})}
-        remarks = e["remarks"].strip() or "_none_"
-        check = "x" if e["downtime"] else " "
+        status_default = STATUS_OPTIONS.index(e["status"]) if e["status"] in STATUS_OPTIONS else 0
+        downtime_default = 1 if e["downtime"] else 0
+        remarks = e["remarks"] or ""
+
         lines += [
-            f"## {env}",
-            f"- Status: `{e['status']}`",
-            f"- [{check}] Scheduled downtime",
-            f"- Remarks: {remarks}",
             "",
+            f"  # ── {env} ──",
+            "  - type: dropdown",
+            f"    id: {env}-status",
+            "    attributes:",
+            f"      label: {env} — Status",
+            "      options:",
+            *[f"        - {opt}" for opt in STATUS_OPTIONS],
+            f"      default: {status_default}",
+            "    validations:",
+            "      required: true",
+            "",
+            "  - type: dropdown",
+            f"    id: {env}-downtime",
+            "    attributes:",
+            f"      label: {env} — Scheduled downtime",
+            "      options:",
+            *[f"        - {opt}" for opt in DOWNTIME_OPTIONS],
+            f"      default: {downtime_default}",
+            "    validations:",
+            "      required: true",
+            "",
+            "  - type: input",
+            f"    id: {env}-remarks",
+            "    attributes:",
+            f"      label: {env} — Remarks",
+            "      placeholder: optional note",
+            f"      value: {yaml_escape(remarks)}",
         ]
-    return "\n".join(lines)
+
+    return "\n".join(lines) + "\n"
 
 
-def parse_body(body: str) -> dict:
-    envs = {e: default_env() for e in ENV_ORDER}
-    # split on "## env-name" headings
-    sections = re.split(r"^##\s+", body, flags=re.M)
-    for sec in sections[1:]:
-        first, *rest = sec.splitlines()
-        env = first.strip()
-        if env not in ENV_ORDER:
-            continue
-        text = "\n".join(rest)
+def cmd_regen_template(_args):
+    data = load_data()
+    new = render_template(data)
+    if TEMPLATE_FILE.exists() and TEMPLATE_FILE.read_text() == new:
+        print("no-change")
+        return
+    TEMPLATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TEMPLATE_FILE.write_text(new)
+    print("changed")
 
-        m_status = re.search(r"Status:\s*`?([A-Za-z]+)`?", text)
-        status = (m_status.group(1).lower() if m_status else "up")
-        if status not in VALID_STATUSES:
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Apply submitted issue form body to data.json
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Issue Forms render submissions as:
+#   ### <label>
+#   <blank line>
+#   <value or "_No response_">
+#   <blank line>
+HEADING_RE = re.compile(r"^###\s+(.+?)\s*$", re.M)
+
+
+def parse_form_body(body: str) -> dict:
+    """Parse a submitted issue-form body. Returns {env: {status, downtime, remarks}}."""
+    # Build {label: value} map
+    fields: dict[str, str] = {}
+    matches = list(HEADING_RE.finditer(body))
+    for i, m in enumerate(matches):
+        label = m.group(1).strip()
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        value = body[start:end].strip()
+        if value in ("_No response_", "*No response*"):
+            value = ""
+        fields[label] = value
+
+    envs: dict[str, dict] = {}
+    for env in ENV_ORDER:
+        status_label   = f"{env} — Status"
+        downtime_label = f"{env} — Scheduled downtime"
+        remarks_label  = f"{env} — Remarks"
+
+        status = fields.get(status_label, "up").strip().lower()
+        if status not in STATUS_OPTIONS:
             status = "up"
 
-        m_dt = re.search(r"\[([ xX])\]\s*Scheduled\s*downtime", text)
-        downtime = bool(m_dt and m_dt.group(1).lower() == "x")
-
-        m_rem = re.search(r"Remarks:\s*(.*)", text)
-        remarks = (m_rem.group(1).strip() if m_rem else "")
-        if remarks in ("_none_", "*none*", "none", "-"):
-            remarks = ""
+        downtime = fields.get(downtime_label, "No").strip().lower() == "yes"
+        remarks = fields.get(remarks_label, "").strip()
 
         envs[env] = {"status": status, "downtime": downtime, "remarks": remarks}
     return envs
 
 
-def cmd_to_json(args):
+def cmd_apply_form(args):
     body = pathlib.Path(args.body_file).read_text()
-    new_envs = parse_body(body)
+    new_envs = parse_form_body(body)
     data = load_data()
     if data.get("envs") == new_envs:
         print("no-change")
@@ -86,24 +165,18 @@ def cmd_to_json(args):
     print("changed")
 
 
-def cmd_to_issue(args):
-    data = load_data()
-    body = render_body(data)
-    pathlib.Path(args.out).write_text(body)
-    print(f"wrote {args.out}")
-
+# ─────────────────────────────────────────────────────────────────────────────
 
 def main():
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    p1 = sub.add_parser("to-json", help="Parse issue body file and update data.json")
-    p1.add_argument("body_file")
-    p1.set_defaults(func=cmd_to_json)
+    p1 = sub.add_parser("regen-template", help="Rewrite issue-form YAML with current defaults.")
+    p1.set_defaults(func=cmd_regen_template)
 
-    p2 = sub.add_parser("to-issue", help="Render issue body from data.json")
-    p2.add_argument("--out", default="issue-body.md")
-    p2.set_defaults(func=cmd_to_issue)
+    p2 = sub.add_parser("apply-form", help="Parse submitted form body and update data.json.")
+    p2.add_argument("body_file")
+    p2.set_defaults(func=cmd_apply_form)
 
     args = p.parse_args()
     args.func(args)

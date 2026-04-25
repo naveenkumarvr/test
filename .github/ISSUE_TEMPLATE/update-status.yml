@@ -1,0 +1,136 @@
+name: Update environment status
+description: Edit the values below to update the AMPM status page.
+title: "Status update"
+labels: ["status-update"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Current values are pre-filled** (snapshot: 2026-04-25T00:00:00Z).
+
+        Change anything you need and click **Submit new issue**.
+        A workflow will update `data.json` and the status page, then close this issue.
+
+  # ── ampm-dev-us ──
+  - type: dropdown
+    id: ampm-dev-us-status
+    attributes:
+      label: ampm-dev-us — Status
+      options:
+        - up
+        - warn
+        - down
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ampm-dev-us-downtime
+    attributes:
+      label: ampm-dev-us — Scheduled downtime
+      options:
+        - No
+        - Yes
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: ampm-dev-us-remarks
+    attributes:
+      label: ampm-dev-us — Remarks
+      placeholder: optional note
+      value: ""
+
+  # ── ampm-qa-us ──
+  - type: dropdown
+    id: ampm-qa-us-status
+    attributes:
+      label: ampm-qa-us — Status
+      options:
+        - up
+        - warn
+        - down
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ampm-qa-us-downtime
+    attributes:
+      label: ampm-qa-us — Scheduled downtime
+      options:
+        - No
+        - Yes
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: ampm-qa-us-remarks
+    attributes:
+      label: ampm-qa-us — Remarks
+      placeholder: optional note
+      value: ""
+
+  # ── ampm-vnv-us ──
+  - type: dropdown
+    id: ampm-vnv-us-status
+    attributes:
+      label: ampm-vnv-us — Status
+      options:
+        - up
+        - warn
+        - down
+      default: 1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ampm-vnv-us-downtime
+    attributes:
+      label: ampm-vnv-us — Scheduled downtime
+      options:
+        - No
+        - Yes
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: ampm-vnv-us-remarks
+    attributes:
+      label: ampm-vnv-us — Remarks
+      placeholder: optional note
+      value: ""
+
+  # ── ampm-perf-us ──
+  - type: dropdown
+    id: ampm-perf-us-status
+    attributes:
+      label: ampm-perf-us — Status
+      options:
+        - up
+        - warn
+        - down
+      default: 2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ampm-perf-us-downtime
+    attributes:
+      label: ampm-perf-us — Scheduled downtime
+      options:
+        - No
+        - Yes
+      default: 1
+    validations:
+      required: true
+
+  - type: input
+    id: ampm-perf-us-remarks
+    attributes:
+      label: ampm-perf-us — Remarks
+      placeholder: optional note
+      value: ""

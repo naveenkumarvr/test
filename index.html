@@ -101,8 +101,8 @@
     </table>
 
     <footer>
-      Source of truth: <code>data.json</code>. Edits happen by editing the
-      pinned <strong>Status Dashboard</strong> issue on GitHub — changes appear here within ~30–60 seconds.
+      Source of truth: <code>data.json</code>. Edits happen via the
+      <strong>Update environment status</strong> issue form on GitHub — changes appear here within ~30–60 seconds.
     </footer>
   </div>
 
@@ -167,7 +167,7 @@
     }
 
     document.getElementById("edit-link").href =
-      `https://github.com/${GH_OWNER}/${GH_REPO}/issues?q=is%3Aissue+label%3Astatus-dashboard`;
+      `https://github.com/${GH_OWNER}/${GH_REPO}/issues/new?template=update-status.yml`;
     document.getElementById("refresh-btn").addEventListener("click", load);
     load();
   </script>
